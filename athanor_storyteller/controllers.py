@@ -60,7 +60,7 @@ class AthanorPersonaController( AthanorController):
         character = self.manager.get('character').find_character(character)
         if not (candidates := DefaultPersona.objects.filter_family(db_character=character)):
             raise ValueError(f"No Personas for {character}!")
-        if not (found := partial_match(category, candidates)):
+        if not (found := partial_match(persona, candidates)):
             raise ValueError(f"Persona '{persona}' not found!")
         return found
 
@@ -80,3 +80,4 @@ class AthanorPersonaController( AthanorController):
         entities = {'enactor': enactor, 'target': persona}
         smsg.Delete(entities).send()
         persona.delete()
+
