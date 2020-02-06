@@ -1,3 +1,6 @@
+import re
+from django.conf import settings
+
 from evennia.utils.logger import log_trace
 from evennia.utils.utils import class_from_module
 from evennia.utils.ansi import ANSIString
@@ -80,3 +83,60 @@ class AthanorPersonaController( AthanorController):
         entities = {'enactor': enactor, 'target': persona}
         smsg.Delete(entities).send()
         persona.delete()
+
+    def find_template(self, template):
+        if not template:
+            raise ValueError("Nothing entered for Template!")
+        if isinstance(template, DefaultPersona):
+            return template
+        if not (found := partial_match(template, settings.STORYTELLER_TEMPLATES.keys())):
+            raise ValueError(f"No template {template}")
+        return settings.STORYTELLER_TEMPLATES[found]
+
+    def change_template(self, session, persona, template):
+        if not (enactor := self.get_user(session)):
+            raise ValueError("Permission denied!")
+        persona = self.find_persona(persona)
+        old_template = persona.__class__
+        template = self.find_template(template)
+        persona.change_template(template)
+        entities = {'enactor': enactor, 'target': persona}
+        smsg.Template(entities, old_template=old_template)
+
+    def parse_trait(self, trait):
+        if ':' in trait:
+            path, context = trait.split(':', 1)
+            path = path.strip()
+            context = context.strip()
+        else:
+            path = trait
+            context = ''
+        if '/' in path:
+            path = [stripped for p in path.split('/') if (stripped := p.strip())]
+        else:
+            path = [path.strip()]
+        trait = None
+        searched = list()
+        for entry in path:
+            searched.append(entry)
+            candidates = DefaultTraitDefinition.objects.filter_family(parent=None)
+            if not (found := partial_match(entry, candidates)):
+                raise ValueError(f"Cannot locate trait: {'/'.join(searched)}")
+            trait = found
+        if context and not trait.db_allow_context:
+            raise ValueError(f"{trait} does not allow Contexts!")
+        if trait.db_require_context and not context:
+            raise ValueError(f"{trait} requires a Context!")
+        return (trait, context)
+
+    def find_trait(self, persona, trait):
+        if not trait:
+            raise ValueError("Nothing entered for trait!")
+        match = self.re_trait(trait).groupdict()
+
+    def set_trait_value(self, session, persona, trait, value):
+        if not (enactor := self.get_user(session)):
+            raise ValueError("Permission denied!")
+        persona = self.find_persona(persona)
+        trait = self.find_trait(persona, trait)
+        persona.set_trait_value(trait, value)

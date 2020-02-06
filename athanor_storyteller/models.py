@@ -51,6 +51,17 @@ class TraitDefinitionDB(TypedObject):
     db_allow_context = models.BooleanField(default=False, null=False)
     db_require_context = models.BooleanField(default=False, null=False)
 
+    def __str__(self):
+        return str(self.db_key)
+
+    def fullpath(self):
+        par = self.db_parent
+        full = [self]
+        while par is not None:
+            full.append(par)
+            par = par.db_parent
+        return '/'.join(str(trait) for trait in reversed(full))
+
     class Meta:
         unique_together = (('db_parent', 'db_key'), ('db_parent', 'db_formal_name'),)
         verbose_name = 'TraitDefinition'
