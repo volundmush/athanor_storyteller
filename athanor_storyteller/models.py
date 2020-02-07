@@ -41,9 +41,6 @@ class TraitDefinitionDB(TypedObject):
     db_child_default_typeclass = models.CharField(max_length=255, null=True, blank=False)
     db_trait_default_typeclass = models.CharField(max_length=255, null=True, blank=False)
 
-    # The proper name of how this Trait should be displayed.
-    db_formal_name = models.CharField(max_length=255, null=False, blank=False)
-
     # If a newly created Persona passes this TraitDefinition's default access lock,
     # the value it will be obtained at.
     db_default_value = models.BigIntegerField(default=0)
@@ -57,7 +54,7 @@ class TraitDefinitionDB(TypedObject):
     def fullpath(self):
         par = self.db_parent
         full = [self]
-        while par is not None:
+        while par:
             full.append(par)
             par = par.db_parent
         return '/'.join(str(trait) for trait in reversed(full))

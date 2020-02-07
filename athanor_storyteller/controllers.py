@@ -114,12 +114,18 @@ class AthanorPersonaController( AthanorController):
         if '/' in path:
             path = [stripped for p in path.split('/') if (stripped := p.strip())]
         else:
-            path = [path.strip()]
+            if not (found := DefaultTraitDefinition.objects.filter_family(db_key__iexact=path).order_by('db_key')):
+                if not (found := DefaultTraitDefinition.objects.filter_family(db_key__istartswith=path).order_by('db_key')):
+                    if not (found := DefaultTraitDefinition.objects.filter_family(db_key__icontains=path).order_by('db_key')):
+                        raise ValueError(f"Cannot quick-find trait: {path}. Please use full path searching with /")
+            if len(found) > 1:
+                raise ValueError(f"That matched {', '.join(t.fullpath() for t in found)}. Please be more exact or use full-path searching with /")
+            return (found[0], context)
         trait = None
         searched = list()
         for entry in path:
             searched.append(entry)
-            candidates = DefaultTraitDefinition.objects.filter_family(parent=None)
+            candidates = DefaultTraitDefinition.objects.filter_family(db_parent=None)
             if not (found := partial_match(entry, candidates)):
                 raise ValueError(f"Cannot locate trait: {'/'.join(searched)}")
             trait = found
@@ -138,5 +144,5 @@ class AthanorPersonaController( AthanorController):
         if not (enactor := self.get_user(session)):
             raise ValueError("Permission denied!")
         persona = self.find_persona(persona)
-        trait = self.find_trait(persona, trait)
-        persona.set_trait_value(trait, value)
+        trait, context = self.find_trait(persona, trait)
+        persona.set_trait_value(trait, context, value)
